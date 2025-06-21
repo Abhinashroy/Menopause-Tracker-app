@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/navigation_home">
+
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="com.menopausetracker.app.ui.home.HomeFragment"
+        android:label="@string/title_home"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_home_to_articles"
+            app:destination="@id/navigation_articles" />
+        <action
+            android:id="@+id/action_home_to_settings"
+            app:destination="@id/navigation_settings" />
+        <action
+            android:id="@+id/action_home_to_symptom_history"
+            app:destination="@id/navigation_symptom_history" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_articles"
+        android:name="com.menopausetracker.app.ui.articles.ArticlesFragment"
+        android:label="@string/title_articles">
+        <action
+            android:id="@+id/action_articles_to_home"
+            app:destination="@id/navigation_home" />
+        <action
+            android:id="@+id/action_articles_to_settings"
+            app:destination="@id/navigation_settings" />
+        <action
+            android:id="@+id/action_articles_to_article_detail"
+            app:destination="@id/navigation_article_detail" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_settings"
+        android:name="com.menopausetracker.app.ui.settings.SettingsFragment"
+        android:label="@string/title_settings">
+        <action
+            android:id="@+id/action_settings_to_home"
+            app:destination="@id/navigation_home" />
+        <action
+            android:id="@+id/action_settings_to_articles"
+            app:destination="@id/navigation_articles" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_article_detail"
+        android:name="com.menopausetracker.app.ui.articles.ArticleDetailFragment"
+        android:label="Article Detail">
+        <argument
+            android:name="articleId"
+            app:argType="long" />
+    </fragment>
+
+    <!-- Symptom History Screen -->
+    <fragment
+        android:id="@+id/navigation_symptom_history"
+        android:name="com.menopausetracker.app.ui.symptoms.SymptomHistoryFragment"
+        android:label="@string/symptom_history"
+        tools:layout="@layout/fragment_symptom_history">
+        <action
+            android:id="@+id/action_symptom_history_to_edit_symptom"
+            app:destination="@id/navigation_edit_symptom" />
+    </fragment>
+
+    <!-- Edit Symptom Screen -->
+    <fragment
+        android:id="@+id/navigation_edit_symptom"
+        android:name="com.menopausetracker.app.ui.symptoms.EditSymptomFragment"
+        android:label="@string/edit_symptom"
+        tools:layout="@layout/fragment_edit_symptom">
+        <argument
+            android:name="symptomId"
+            app:argType="long"
+            android:defaultValue="0L" />
+    </fragment>
+
+</navigation>
+

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Menopause Tracker</string>
+    <string name="title_home">Home</string>
+    <string name="title_articles">Articles</string>
+    <string name="title_settings">Settings</string>
+    
+    <!-- Home Screen -->
+    <string name="how_are_you_feeling">How are you feeling today?</string>
+    <string name="enter_symptoms">Enter your symptoms</string>
+    <string name="get_recommendations">Get Recommendations</string>
+    <string name="no_internet">No internet connection. Please check your connection and try again.</string>
+    <string name="saving_data">Saving your data…</string>
+    <string name="track_your_symptoms">Track Your Symptoms</string>
+    <string name="hot_flashes">Hot Flashes</string>
+    <string name="night_sweats">Night Sweats</string>
+    <string name="mood_changes">Mood Changes</string>
+    <string name="sleep_issues">Sleep Issues</string>
+    <string name="fatigue">Fatigue</string>
+    <string name="symptom_severity_1_10">Symptom Severity (1-10)</string>
+    <string name="log_symptoms">Log Symptoms</string>
+    <string name="daily_recommendations">Daily Recommendations</string>
+    <string name="feeling_better">Feeling Better?</string>
+    <string name="i_feel_cured">I Feel Cured!</string>
+    <string name="symptoms_logged">Your symptoms have been logged</string>
+    <string name="recovery_reported">Congratulations! We\'re glad you\'re feeling better.</string>
+
+    <!-- Articles Screen -->
+    <string name="saved_articles">Saved Articles</string>
+    <string name="save_article">Save Article</string>
+    <string name="article_saved">Article saved successfully</string>
+    <string name="article_removed">Article removed from saved items</string>
+    
+    <!-- Settings Screen -->
+    <string name="delete_all_data">Delete All Data</string>
+    <string name="delete_confirmation">Are you sure you want to delete all your data? This action cannot be undone.</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="disclaimer">Disclaimer: This app provides AI-generated recommendations and should not be considered as medical advice. Always consult with healthcare professionals for medical decisions.</string>
+    <string name="app_version">App Version: 1.0</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_articles">Articles</string>
+    <string name="nav_settings">Settings</string>
+    
+    <!-- Articles -->
+    <string name="article_image">Article Image</string>
+    <string name="error_loading_articles">Error loading articles. Please try again.</string>
+    <string name="no_articles">No articles available</string>
+    
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_summary">Enable or disable notifications</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_summary">Choose app theme</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_summary">App information and version</string>
+
+    <!-- Greetings -->
+    <string-array name="daily_greetings">
+        <item>Good morning! Remember, you\'re stronger than your symptoms.</item>
+        <item>Hello! Today is a new opportunity to prioritize your well-being.</item>
+        <item>Welcome back! Each day brings you closer to feeling better.</item>
+        <item>Hi there! Remember to be gentle with yourself today.</item>
+        <item>Hello! Small steps lead to big progress in your menopause journey.</item>
+        <item>Good day! Your strength in managing menopause is inspiring.</item>
+        <item>Welcome! Today is another chance to listen to your body.</item>
+        <item>Hello! You\'re not alone on this journey.</item>
+        <item>Hi! Remember that self-care isn\'t selfish—it\'s necessary.</item>
+        <item>Good day! Celebrating your resilience through this transition.</item>
+        <item>Welcome back! Your body is changing, but your spirit remains strong.</item>
+        <item>Hello! Menopause is a journey, not a destination.</item>
+        <item>Hi there! Your experience matters, and tracking helps.</item>
+        <item>Welcome! Every symptom logged helps you understand your body better.</item>
+        <item>Good morning! Menopause doesn\'t define you—it\'s just a chapter.</item>
+        <item>Hello! Today, focus on what makes you feel good.</item>
+        <item>Hi! Your strength through this transition is remarkable.</item>
+        <item>Welcome back! Remember to celebrate small victories.</item>
+        <item>Good day! You\'re handling this transition with grace.</item>
+        <item>Hello! This phase is temporary, but your power is permanent.</item>
+    </string-array>
+
+    <!-- Symptom History -->
+    <string name="view_history">View History</string>
+    <string name="symptom_history">Symptom History</string>
+    <string name="no_symptoms_recorded">No symptoms recorded yet</string>
+    <string name="add_symptom">Add Symptom</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="severity_label">Severity: %1$d</string>
+    <string name="edit_symptom">Edit Symptom</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete_confirmation_symptom">Are you sure you want to delete this symptom record?</string>
+    <string name="symptom_deleted">Symptom record deleted</string>
+    <string name="symptom_updated">Symptom updated successfully</string>
+    <string name="common_symptoms">Common symptoms:</string>
+    <string name="search_symptoms">Search symptoms</string>
+
+    <!-- Symptom Suggestions -->
+    <string-array name="symptom_suggestions">
+        <item>Hot flashes</item>
+        <item>Night sweats</item>
+        <item>Mood changes</item>
+        <item>Sleep problems</item>
+        <item>Irregular periods</item>
+        <item>Vaginal dryness</item>
+        <item>Fatigue</item>
+        <item>Memory issues</item>
+        <item>Headaches</item>
+        <item>Joint pain</item>
+        <item>Weight gain</item>
+        <item>Hair thinning</item>
+        <item>Dry skin</item>
+        <item>Heart palpitations</item>
+        <item>Loss of libido</item>
+        <item>Anxiety</item>
+        <item>Depression</item>
+        <item>Irritability</item>
+        <item>Brain fog</item>
+        <item>Muscle tension</item>
+    </string-array>
+</resources>
+
