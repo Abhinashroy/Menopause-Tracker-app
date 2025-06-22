@@ -24,6 +24,9 @@
     <string name="i_feel_cured">I Feel Cured!</string>
     <string name="symptoms_logged">Your symptoms have been logged</string>
     <string name="recovery_reported">Congratulations! We\'re glad you\'re feeling better.</string>
+    <string name="days_in_journey">Days in your journey: %1$d</string>
+    <string name="confirm_recovery">Confirm Recovery</string>
+    <string name="recovery_confirmation_message">Are you sure you want to reset your journey? This will clear all your logged symptoms and reset your days counter.</string>
 
     <!-- Articles Screen -->
     <string name="saved_articles">Saved Articles</string>
@@ -96,31 +99,75 @@
     <string name="delete_confirmation_symptom">Are you sure you want to delete this symptom record?</string>
     <string name="symptom_deleted">Symptom record deleted</string>
     <string name="symptom_updated">Symptom updated successfully</string>
-    <string name="common_symptoms">Common symptoms:</string>
-    <string name="search_symptoms">Search symptoms</string>
+    <string name="common_symptoms">Common Symptoms</string>
+    <string name="search_symptoms">Search symptoms to add</string>
+    <string name="symptom_severity">Symptom Severity (1–5)</string>
+    <string name="mild">Mild</string>
+    <string name="moderate">Moderate</string>
+    <string name="severe">Severe</string>
 
     <!-- Symptom Suggestions -->
     <string-array name="symptom_suggestions">
-        <item>Hot flashes</item>
-        <item>Night sweats</item>
-        <item>Mood changes</item>
-        <item>Sleep problems</item>
-        <item>Irregular periods</item>
-        <item>Vaginal dryness</item>
-        <item>Fatigue</item>
-        <item>Memory issues</item>
-        <item>Headaches</item>
-        <item>Joint pain</item>
-        <item>Weight gain</item>
-        <item>Hair thinning</item>
-        <item>Dry skin</item>
-        <item>Heart palpitations</item>
-        <item>Loss of libido</item>
+        <item>Hot Flashes</item>
+        <item>Night Sweats</item>
+        <item>Mood Swings</item>
         <item>Anxiety</item>
         <item>Depression</item>
+        <item>Sleep Disturbances</item>
+        <item>Insomnia</item>
+        <item>Fatigue</item>
+        <item>Weight Gain</item>
+        <item>Memory Lapses</item>
+        <item>Difficulty Concentrating</item>
+        <item>Vaginal Dryness</item>
+        <item>Headaches</item>
+        <item>Joint Pain</item>
+        <item>Breast Tenderness</item>
+        <item>Digestive Issues</item>
+        <item>Bloating</item>
+        <item>Hair Thinning</item>
+        <item>Dry Skin</item>
+        <item>Heart Palpitations</item>
+        <item>Dizziness</item>
         <item>Irritability</item>
-        <item>Brain fog</item>
-        <item>Muscle tension</item>
+        <item>Loss of Libido</item>
+        <item>Muscle Tension</item>
+        <item>Food Cravings</item>
+        <item>Urinary Incontinence</item>
+        <item>Bone Density Loss</item>
+        <item>Osteoporosis Concerns</item>
+        <item>Brittle Nails</item>
+        <item>Tingling Extremities</item>
+        <item>Electric Shock Sensation</item>
+        <item>Burning Mouth</item>
+        <item>Dry Eyes</item>
+        <item>Gum Problems</item>
+        <item>Irregular Heartbeat</item>
+        <item>Changes in Body Odor</item>
+        <item>Allergies</item>
+        <item>Water Retention</item>
+        <item>Hormonal Headaches</item>
+        <item>Itchy Skin</item>
+        <item>Thinning Skin</item>
+        <item>Dry Mouth</item>
+        <item>Loss of Breast Fullness</item>
+        <item>Increased Facial Hair</item>
+        <item>Formication (Crawling Skin)</item>
     </string-array>
-</resources>
 
+    <!-- AI Prompt Feature -->
+    <string name="ai_assistant">AI Health Assistant</string>
+    <string name="ai_prompt_hint">Ask a question about menopause (100 words max)</string>
+    <string name="ai_prompt_button">Get Advice</string>
+    <string name="ai_character_limit">Character limit: %1$d/100</string>
+    <string name="ai_based_on_symptoms">Based on your recent symptoms</string>
+    <string name="ai_loading">Analyzing your question...</string>
+    <string name="ai_error">Sorry, couldn\'t process your request. Please try again.</string>
+    <string name="suggestion_detail_title">Health Suggestion</string>
+    <string name="back">Back</string>
+    <string name="source">Source: Menopause Tracker AI Assistant</string>
+
+    <!-- AI Assistant -->
+    <string name="tap_to_read_more">Tap to read more</string>
+    <string name="delete_suggestion">Delete suggestion</string>
+</resources>

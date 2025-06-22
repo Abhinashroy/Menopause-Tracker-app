@@ -1,6 +1,7 @@
 package com.menopausetracker.app.ui.home
 
 import android.os.Bundle
+import android.text.Html
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +11,7 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.menopausetracker.app.R
 import com.menopausetracker.app.databinding.FragmentHomeBinding
@@ -18,6 +20,9 @@ class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: HomeViewModel
+
+    // Store selected symptoms
+    private val selectedSymptoms = mutableSetOf<String>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,21 +48,41 @@ class HomeFragment : Fragment() {
             findNavController().navigate(R.id.action_home_to_symptom_history)
         }
 
-        // Setup severity slider
-        binding.severitySlider.value = 5f
+        // Setup severity slider with updated scale (1-5)
+        binding.severitySlider.value = 3f // Default to middle value
+
+        // Setup common symptom chips
+        binding.chipHotFlashes.setOnClickListener {
+            addSymptomToSelection(getString(R.string.hot_flashes))
+        }
+        binding.chipNightSweats.setOnClickListener {
+            addSymptomToSelection(getString(R.string.night_sweats))
+        }
+        binding.chipMoodChanges.setOnClickListener {
+            addSymptomToSelection(getString(R.string.mood_changes))
+        }
+        binding.chipSleepIssues.setOnClickListener {
+            addSymptomToSelection(getString(R.string.sleep_issues))
+        }
+        binding.chipFatigue.setOnClickListener {
+            addSymptomToSelection(getString(R.string.fatigue))
+        }
 
         // Setup log symptoms button
         binding.buttonLogSymptoms.setOnClickListener {
-            val description = binding.editTextSymptoms.text.toString()
             val severity = binding.severitySlider.value.toInt()
-            val hotFlashes = binding.chipHotFlashes.isChecked
-            val nightSweats = binding.chipNightSweats.isChecked
-            val moodChanges = binding.chipMoodChanges.isChecked
-            val sleepIssues = binding.chipSleepIssues.isChecked
-            val fatigue = binding.chipFatigue.isChecked
 
-            if (description.isNotEmpty() || hotFlashes || nightSweats ||
-                moodChanges || sleepIssues || fatigue) {
+            if (selectedSymptoms.isNotEmpty()) {
+                // Common symptoms flags for backward compatibility
+                val hotFlashes = selectedSymptoms.contains(getString(R.string.hot_flashes))
+                val nightSweats = selectedSymptoms.contains(getString(R.string.night_sweats))
+                val moodChanges = selectedSymptoms.contains(getString(R.string.mood_changes))
+                val sleepIssues = selectedSymptoms.contains(getString(R.string.sleep_issues))
+                val fatigue = selectedSymptoms.contains(getString(R.string.fatigue))
+
+                // Create description from all selected symptoms
+                val description = selectedSymptoms.joinToString(", ")
+
                 viewModel.logSymptom(
                     description,
                     severity,
@@ -67,6 +92,9 @@ class HomeFragment : Fragment() {
                     sleepIssues,
                     fatigue
                 )
+
+                // Clear selections after logging
+                clearSelectedSymptoms()
             } else {
                 Toast.makeText(context, R.string.enter_symptoms, Toast.LENGTH_SHORT).show()
             }
@@ -74,120 +102,120 @@ class HomeFragment : Fragment() {
 
         // Setup get recommendations button
         binding.buttonGetRecommendations.setOnClickListener {
-            val symptoms = binding.editTextSymptoms.text.toString()
-
-            // Construct a description from selected symptoms
-            val selectedSymptoms = mutableListOf<String>()
-            if (binding.chipHotFlashes.isChecked) selectedSymptoms.add(getString(R.string.hot_flashes))
-            if (binding.chipNightSweats.isChecked) selectedSymptoms.add(getString(R.string.night_sweats))
-            if (binding.chipMoodChanges.isChecked) selectedSymptoms.add(getString(R.string.mood_changes))
-            if (binding.chipSleepIssues.isChecked) selectedSymptoms.add(getString(R.string.sleep_issues))
-            if (binding.chipFatigue.isChecked) selectedSymptoms.add(getString(R.string.fatigue))
-
-            val finalDescription = if (symptoms.isNotEmpty()) {
-                if (selectedSymptoms.isEmpty()) symptoms
-                else "$symptoms. I'm also experiencing: ${selectedSymptoms.joinToString(", ")}"
-            } else if (selectedSymptoms.isNotEmpty()) {
-                "I'm experiencing: ${selectedSymptoms.joinToString(", ")}"
+            // Always get recommendations - either from selected symptoms or history
+            val description = if (selectedSymptoms.isNotEmpty()) {
+                selectedSymptoms.joinToString(", ")
             } else {
+                // Empty string will trigger the repository to use historical symptoms
                 ""
             }
-
-            if (finalDescription.isNotEmpty()) {
-                viewModel.getRecommendations(finalDescription)
-            } else {
-                Toast.makeText(context, R.string.enter_symptoms, Toast.LENGTH_SHORT).show()
-            }
+            viewModel.getRecommendations(description)
         }
 
-        // Setup recovery reporting
+        // Setup "I feel cured" button click handler
         binding.buttonReportRecovery.setOnClickListener {
             MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.feeling_better)
-                .setMessage("Are you sure you want to mark yourself as recovered? This will reset your tracking.")
-                .setPositiveButton(R.string.yes) { _, _ ->
+                .setTitle(R.string.confirm_recovery)
+                .setMessage(R.string.recovery_confirmation_message)
+                .setPositiveButton(R.string.yes) { dialog, _ ->
                     viewModel.reportRecovery()
                     Toast.makeText(context, R.string.recovery_reported, Toast.LENGTH_LONG).show()
-                    clearInputs()
                 }
-                .setNegativeButton(R.string.no, null)
+                .setNegativeButton(R.string.cancel, null)
                 .show()
+        }
+
+        // Setup AI Assistant navigation
+        binding.buttonAiAssistant?.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_ai_prompt)
         }
     }
 
     private fun setupAutoComplete() {
         // Get symptom suggestions from resources
-        val suggestions = resources.getStringArray(R.array.symptom_suggestions)
-
-        // Create adapter for AutoCompleteTextView
+        val symptomSuggestions = resources.getStringArray(R.array.symptom_suggestions)
         val adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_dropdown_item_1line,
-            suggestions
+            symptomSuggestions
         )
 
-        binding.editTextSymptoms.apply {
-            setAdapter(adapter)
-            threshold = 1 // Show suggestions after typing 1 character
+        // Set up the AutoCompleteTextView for symptom search
+        val autoCompleteTextView = binding.editTextSymptoms
+        autoCompleteTextView.setAdapter(adapter)
+
+        // Handle symptom selection
+        autoCompleteTextView.setOnItemClickListener { _, _, position, _ ->
+            val selectedSymptom = adapter.getItem(position).toString()
+            addSymptomToSelection(selectedSymptom)
+            autoCompleteTextView.text.clear()
         }
     }
 
-    private fun observeViewModel() {
-        // Observe recommendations
-        viewModel.recommendations.observe(viewLifecycleOwner) { recommendations ->
-            binding.textRecommendations.text = recommendations
+    private fun addSymptomToSelection(symptom: String) {
+        // Only add if not already selected
+        if (!selectedSymptoms.contains(symptom)) {
+            selectedSymptoms.add(symptom)
+            addChip(symptom)
         }
+    }
 
-        // Observe loading state
-        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            binding.progressBar.isVisible = isLoading
-        }
-
-        // Observe errors
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            if (!error.isNullOrEmpty()) {
-                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+    private fun addChip(symptom: String) {
+        val chip = Chip(context).apply {
+            text = symptom
+            isCloseIconVisible = true
+            setOnCloseIconClickListener {
+                binding.selectedSymptomsChipGroup.removeView(this)
+                selectedSymptoms.remove(symptom)
             }
         }
+        binding.selectedSymptomsChipGroup.addView(chip)
+    }
 
-        // Observe greeting message
+    private fun clearSelectedSymptoms() {
+        selectedSymptoms.clear()
+        binding.selectedSymptomsChipGroup.removeAllViews()
+        binding.severitySlider.value = 3f
+    }
+
+    private fun observeViewModel() {
         viewModel.greeting.observe(viewLifecycleOwner) { greeting ->
             binding.textGreeting.text = greeting
         }
 
-        // Observe days count
         viewModel.daysCount.observe(viewLifecycleOwner) { days ->
-            binding.textDaysCounter.text = "Days in your journey: $days"
+            binding.textDaysCounter.text = getString(R.string.days_in_journey, days)
         }
 
-        // Observe tracking status
-        viewModel.isTrackingActive.observe(viewLifecycleOwner) { isActive ->
-            binding.recoveryCard.isVisible = isActive
-            if (!isActive) {
-                binding.textDaysCounter.isVisible = false
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.progressBar.isVisible = isLoading
+        }
+
+        viewModel.recommendations.observe(viewLifecycleOwner) { recommendations ->
+            if (recommendations != null) {
+                // Use Html.fromHtml to render the formatted text
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    binding.textRecommendations.text = Html.fromHtml(recommendations, Html.FROM_HTML_MODE_COMPACT)
+                } else {
+                    @Suppress("DEPRECATION")
+                    binding.textRecommendations.text = Html.fromHtml(recommendations)
+                }
             } else {
-                binding.textDaysCounter.isVisible = true
+                binding.textRecommendations.text = ""
             }
         }
 
-        // Observe symptom saved confirmation
+        viewModel.error.observe(viewLifecycleOwner) { errorMessage ->
+            if (!errorMessage.isNullOrEmpty()) {
+                Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+            }
+        }
+
         viewModel.symptomSaved.observe(viewLifecycleOwner) { saved ->
             if (saved) {
                 Toast.makeText(context, R.string.symptoms_logged, Toast.LENGTH_SHORT).show()
-                clearInputs()
-                viewModel.resetSymptomSaved()
             }
         }
-    }
-
-    private fun clearInputs() {
-        binding.editTextSymptoms.text?.clear()
-        binding.chipHotFlashes.isChecked = false
-        binding.chipNightSweats.isChecked = false
-        binding.chipMoodChanges.isChecked = false
-        binding.chipSleepIssues.isChecked = false
-        binding.chipFatigue.isChecked = false
-        binding.severitySlider.value = 5f
     }
 
     override fun onDestroyView() {

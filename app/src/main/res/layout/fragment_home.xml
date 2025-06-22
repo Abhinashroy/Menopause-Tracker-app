@@ -78,21 +78,34 @@
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/symptoms_input_layout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="@string/how_are_you_feeling"
-                    app:endIconMode="clear_text">
+                    android:hint="@string/search_symptoms">
 
                     <AutoCompleteTextView
                         android:id="@+id/edit_text_symptoms"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="top"
-                        android:inputType="textMultiLine"
-                        android:minLines="3" />
+                        android:completionThreshold="1"
+                        android:inputType="text" />
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Selected Symptoms Display -->
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/selected_symptoms_chip_group"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp" />
+
+                <!-- Common Symptoms -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/common_symptoms"
+                    android:textAppearance="?attr/textAppearanceSubtitle1" />
 
                 <!-- Symptom Checkboxes -->
                 <com.google.android.material.chip.ChipGroup
@@ -137,21 +150,62 @@
                         android:text="@string/fatigue" />
                 </com.google.android.material.chip.ChipGroup>
 
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/severity_slider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:stepSize="1"
-                    android:valueFrom="1"
-                    android:valueTo="10"
-                    app:labelBehavior="withinBounds" />
-
+                <!-- Enhanced Severity Scale -->
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/symptom_severity_1_10"
-                    android:textAppearance="?attr/textAppearanceCaption" />
+                    android:layout_marginTop="16dp"
+                    android:text="@string/symptom_severity"
+                    android:textAppearance="?attr/textAppearanceSubtitle1" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/severity_slider"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:stepSize="1"
+                        android:valueFrom="1"
+                        android:valueTo="5"
+                        app:labelBehavior="withinBounds"
+                        app:thumbColor="@color/design_default_color_primary"
+                        app:trackColorActive="@color/design_default_color_primary"
+                        app:trackHeight="8dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="start"
+                            android:text="@string/mild"
+                            android:textAppearance="?attr/textAppearanceCaption" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="@string/moderate"
+                            android:textAppearance="?attr/textAppearanceCaption" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="end"
+                            android:text="@string/severe"
+                            android:textAppearance="?attr/textAppearanceCaption" />
+                    </LinearLayout>
+                </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_log_symptoms"
@@ -206,6 +260,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
+                    android:textSize="16sp"
+                    android:lineSpacingMultiplier="1.2"
+                    android:textIsSelectable="true"
                     android:textAppearance="?attr/textAppearanceBody1" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -216,11 +273,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
             app:cardCornerRadius="12dp"
             app:cardElevation="4dp"
             app:cardUseCompatPadding="true"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@id/recommendations_card">
 
             <LinearLayout
@@ -242,6 +297,48 @@
                     android:layout_marginTop="8dp"
                     android:text="@string/i_feel_cured"
                     app:icon="@android:drawable/ic_menu_send"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- AI Health Assistant Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/ai_assistant_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:cardUseCompatPadding="true"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/recovery_card">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ai_assistant"
+                    android:textAppearance="?attr/textAppearanceHeadline6" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Get personalized advice about menopause symptoms and management"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_ai_assistant"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/ai_assistant"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

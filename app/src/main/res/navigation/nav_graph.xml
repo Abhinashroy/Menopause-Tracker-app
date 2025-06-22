@@ -19,6 +19,9 @@
         <action
             android:id="@+id/action_home_to_symptom_history"
             app:destination="@id/navigation_symptom_history" />
+        <action
+            android:id="@+id/action_home_to_ai_prompt"
+            app:destination="@id/navigation_ai_prompt" />
     </fragment>
 
     <fragment
@@ -78,6 +81,39 @@
             android:name="symptomId"
             app:argType="long"
             android:defaultValue="0L" />
+    </fragment>
+
+    <!-- AI Prompt Screen -->
+    <fragment
+        android:id="@+id/navigation_ai_prompt"
+        android:name="com.menopausetracker.app.ui.ai.AIPromptFragment"
+        android:label="@string/ai_assistant"
+        tools:layout="@layout/fragment_ai_prompt">
+        <action
+            android:id="@+id/action_ai_prompt_to_suggestion_detail"
+            app:destination="@id/navigation_suggestion_detail" />
+    </fragment>
+
+    <!-- Suggestion Detail Screen -->
+    <fragment
+        android:id="@+id/navigation_suggestion_detail"
+        android:name="com.menopausetracker.app.ui.ai.SuggestionDetailFragment"
+        android:label="@string/suggestion_detail_title"
+        tools:layout="@layout/fragment_suggestion_detail">
+        <argument
+            android:name="title"
+            app:argType="string" />
+        <argument
+            android:name="content"
+            app:argType="string" />
+        <argument
+            android:name="timestamp"
+            app:argType="long"
+            android:defaultValue="0L" />
+        <argument
+            android:name="suggestionId"
+            app:argType="string"
+            android:defaultValue="" />
     </fragment>
 
 </navigation>

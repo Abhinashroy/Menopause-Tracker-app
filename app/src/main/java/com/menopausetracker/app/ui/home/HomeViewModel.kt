@@ -81,7 +81,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val result = recommendationRepository.getRecommendations(symptoms)
                 withContext(Dispatchers.Main) {
-                    _recommendations.value = result
+                    // Process the result to handle markdown formatting
+                    _recommendations.value = formatMarkdownText(result)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -97,6 +98,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Format markdown text to handle bold, italics, and bullet points
+     */
+    private fun formatMarkdownText(text: String): String {
+        // Replace markdown formatting with HTML tags that TextView can render with fromHtml
+        var formattedText = text
+
+        // Replace markdown bold markers with HTML bold tags
+        formattedText = formattedText.replace(Regex("\\*\\*(.*?)\\*\\*"), "<b>$1</b>")
+
+        // Replace markdown italics markers with HTML italic tags
+        formattedText = formattedText.replace(Regex("\\*(.*?)\\*"), "<i>$1</i>")
+
+        // Replace markdown bullet points with HTML bullet points
+        formattedText = formattedText.replace(Regex("^\\s*\\*\\s+(.+)$", RegexOption.MULTILINE), "• $1<br>")
+
+        return formattedText
+    }
+
     fun logSymptom(
         description: String,
         severity: Int,
@@ -109,7 +129,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val symptom = Symptom(
-                    date = Date(),
                     description = description,
                     severity = severity,
                     hotFlashes = hotFlashes,
@@ -119,7 +138,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     fatigue = fatigue
                 )
 
+                // Save symptom to the main database
                 symptomRepository.insertSymptom(symptom)
+
+                // Also save to the legacy database used by recommendations
+                recommendationRepository.saveSymptom(description)
 
                 // Start or update tracking if not already active
                 val tracking = trackingRepository.getTracking()
@@ -149,14 +172,24 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun reportRecovery() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Step 1: Delete all logged symptoms
+                symptomRepository.deleteAllSymptoms()
+
+                // Step 2: Clear recommendations history
+                recommendationRepository.clearSymptomHistory()
+
+                // Step 3: Reset or end the current tracking
                 val tracking = trackingRepository.getTracking()
                 if (tracking != null) {
+                    // Create a new tracking entry with isActive=false to mark the end of the journey
                     trackingRepository.insertTracking(
                         tracking.copy(isActive = false)
                     )
                 }
+
                 withContext(Dispatchers.Main) {
                     _isTrackingActive.value = false
+                    _daysCount.value = 0
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
