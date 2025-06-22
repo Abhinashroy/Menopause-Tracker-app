@@ -10,9 +10,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.menopausetracker.app.databinding.FragmentSuggestionDetailBinding
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class SuggestionDetailFragment : Fragment() {
 
@@ -38,16 +35,8 @@ class SuggestionDetailFragment : Fragment() {
         binding.textSuggestionTitle.text = args.title
         binding.textSuggestionDetail.text = args.content
 
-        // Set the timestamp
-        val timestamp = args.timestamp
-        if (timestamp > 0) {
-            val dateFormat = SimpleDateFormat("MMMM dd, yyyy • hh:mm a", Locale.getDefault())
-            binding.textPromptTimestamp.text = "Generated: ${dateFormat.format(Date(timestamp))}"
-        } else {
-            // Use current date if timestamp wasn't passed
-            val dateFormat = SimpleDateFormat("MMMM dd, yyyy • hh:mm a", Locale.getDefault())
-            binding.textPromptTimestamp.text = "Generated: ${dateFormat.format(Date())}"
-        }
+        // Hide the timestamp in the detail view as requested
+        binding.textPromptTimestamp.visibility = View.GONE
 
         // Set up back navigation
         binding.toolbar.setNavigationOnClickListener {
