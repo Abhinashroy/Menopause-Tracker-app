@@ -11,7 +11,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.menopausetracker.app.data.model.Suggestion
 import com.menopausetracker.app.data.model.Symptom
-import com.menopausetracker.app.data.repository.AIAssistant
+import com.menopausetracker.app.data.repository.AIAssistantRepository
 import com.menopausetracker.app.data.repository.SymptomRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 
 class AIAssistantViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val aiAssistantRepository = AIAssistant()
+    private val aiAssistantRepository = AIAssistantRepository()
     private val symptomRepository = SymptomRepository(application)
     private val sharedPreferences = application.getSharedPreferences("ai_suggestions", Context.MODE_PRIVATE)
     private val gson = Gson()

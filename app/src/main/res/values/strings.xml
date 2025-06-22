@@ -101,7 +101,7 @@
     <string name="symptom_updated">Symptom updated successfully</string>
     <string name="common_symptoms">Common Symptoms</string>
     <string name="search_symptoms">Search symptoms to add</string>
-    <string name="symptom_severity">Symptom Severity (1–5)</string>
+    <string name="symptom_severity">Symptom Severity</string>
     <string name="mild">Mild</string>
     <string name="moderate">Moderate</string>
     <string name="severe">Severe</string>

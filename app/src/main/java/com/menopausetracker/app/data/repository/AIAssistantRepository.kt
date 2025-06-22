@@ -1,281 +1,291 @@
 package com.menopausetracker.app.data.repository
 
+import android.util.Log
 import com.menopausetracker.app.data.model.Suggestion
 import com.menopausetracker.app.data.model.Symptom
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.SafetySetting
+import com.google.ai.client.generativeai.type.BlockThreshold
+import com.google.ai.client.generativeai.type.HarmCategory
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
+import java.io.IOException
+import kotlin.system.measureTimeMillis
 
 /**
- * Repository for handling AI health suggestions based on user prompts and logged symptoms.
+ * Repository for generating health suggestions using the Gemini model.
  */
-class AIAssistant {
+class AIAssistantRepository {
+    companion object {
+        private const val TAG = "AIAssistantRepo"
+        private const val API_TIMEOUT_MS = 10000L // 10 seconds
+        private const val MODEL_NAME = "gemini-2.0-flash"
+        private const val API_KEY = "AIzaSyD7UzsETcBH411hr13elPTa5aH0KF5yrkI" // Replace with actual API key
+    }
+
+    // In-memory cache for suggestions
+    private var cachedSuggestions: List<Suggestion> = emptyList()
+
+    // Fallback responses for common symptoms
+    private val fallbackSuggestions = mapOf(
+        "Hot Flashes" to "For hot flashes, try wearing layered clothing that can be easily removed. Keep a portable fan nearby and stay hydrated. Identify and avoid triggers like spicy foods, alcohol, and caffeine. Deep breathing exercises when a hot flash begins may help reduce its intensity.",
+        "Night Sweats" to "To manage night sweats, use moisture-wicking bedding and sleepwear. Keep your bedroom cool (around 65°F/18°C) and avoid triggers before bedtime. Consider a cooling mattress pad or pillow. Keep water nearby to stay hydrated throughout the night.",
+        "Sleep Issues" to "To improve sleep quality, maintain a consistent sleep schedule, even on weekends. Create a restful environment by keeping your bedroom dark, quiet, and cool. Avoid screens at least an hour before bedtime. Consider relaxation techniques like gentle stretching or reading before sleep.",
+        "Mood Changes" to "For mood swings, practice mindfulness techniques such as meditation or deep breathing. Regular exercise can help stabilize mood. Consider keeping a mood journal to identify triggers. Ensure you're getting adequate sleep, as fatigue can worsen mood fluctuations.",
+        "Fatigue" to "To combat fatigue, prioritize activities based on your energy levels throughout the day. Incorporate short rest periods into your schedule. Stay hydrated and maintain a balanced diet rich in iron and B vitamins. Regular, moderate exercise can actually boost energy levels despite initial effort.",
+        "Breast Tenderness" to "For breast tenderness, wear a supportive bra, possibly even during sleep. Apply cool compresses for comfort. Limit salt, caffeine, and alcohol intake. Consider evening primrose oil supplements after consulting your healthcare provider."
+    )
+
+    // Topic fallback responses
+    private val topicFallbackResponses = mapOf(
+        "general" to "• Menopause is a natural transition marking the end of reproductive years\n• Most women experience menopause between 45-55 years of age\n• Symptoms can vary widely between individuals\n• Consider consulting with a healthcare provider for personalized advice",
+        "diet" to "• Stay hydrated and maintain a balanced diet\n• Foods rich in calcium and vitamin D support bone health\n• Consider limiting caffeine, alcohol, and spicy foods which can trigger hot flashes\n• Incorporate whole grains, fruits, vegetables, and lean proteins",
+        "exercise" to "• Regular physical activity helps manage symptoms and improve mood\n• Weight-bearing exercises support bone health\n• Aim for at least 150 minutes of moderate exercise weekly\n• Activities like walking, swimming, and yoga are particularly beneficial",
+        "sleep" to "• Maintain a consistent sleep schedule\n• Keep your bedroom cool, dark, and quiet\n• Avoid screens at least an hour before bedtime\n• Consider relaxation techniques like deep breathing or gentle stretching before sleep"
+    )
 
     /**
-     * Generates a suggestion based on user input and up to 2 most recent symptoms
-     * @param prompt User's question or prompt
-     * @param recentSymptoms List of user's recently logged symptoms (up to 2)
-     * @return Result containing a suggestion or failure
+     * Generate a suggestion based on user prompt and recent symptoms.
+     * Returns a Result containing either a Suggestion or an Exception.
      */
-    suspend fun generateSuggestion(prompt: String, recentSymptoms: List<Symptom> = emptyList()): Result<Suggestion> = withContext(Dispatchers.IO) {
-        try {
-            // Check if there's a valid prompt or symptoms
-            if (prompt.isBlank() && recentSymptoms.isEmpty()) {
-                return@withContext Result.failure(Exception("Please enter a question or log symptoms for personalized advice."))
+    suspend fun generateSuggestion(prompt: String, recentSymptoms: List<Symptom>): Result<Suggestion> {
+        return try {
+            var resultSuggestion: Suggestion? = null
+
+            val elapsedTime = measureTimeMillis {
+                resultSuggestion = withTimeoutOrNull(API_TIMEOUT_MS) {
+                    generateWithAI(prompt, recentSymptoms)
+                }
+
+                // If AI generation failed or timed out, use fallback
+                if (resultSuggestion == null) {
+                    resultSuggestion = generateFallbackSuggestion(prompt, recentSymptoms)
+                }
             }
 
-            // Generate personalized content based on prompt and symptoms (up to 2)
-            val suggestion = Suggestion(
-                id = UUID.randomUUID().toString(),
-                title = getGeneratedTitle(prompt, recentSymptoms),
-                content = getGeneratedContent(prompt, recentSymptoms.take(2)),
-                prompt = prompt // Store the user's original prompt
-            )
+            Log.d(TAG, "Suggestion generated in $elapsedTime ms")
 
-            Result.success(suggestion)
+            // Return the result outside of measureTimeMillis
+            if (resultSuggestion != null) {
+                Result.success(resultSuggestion!!)
+            } else {
+                Result.failure(IOException("Failed to generate suggestion"))
+            }
         } catch (e: Exception) {
+            Log.e(TAG, "Error generating suggestion", e)
             Result.failure(e)
         }
     }
 
-    // Original method to maintain backward compatibility
-    suspend fun generateSuggestion(prompt: String): Result<Suggestion> {
-        return generateSuggestion(prompt, emptyList())
+    /**
+     * Attempt to generate response using Gemini API
+     */
+    private suspend fun generateWithAI(prompt: String, recentSymptoms: List<Symptom>): Suggestion? {
+        try {
+            // Configure safety settings
+            val safetySettings = listOf(
+                SafetySetting(HarmCategory.HATE_SPEECH, BlockThreshold.ONLY_HIGH),
+                SafetySetting(HarmCategory.DANGEROUS_CONTENT, BlockThreshold.ONLY_HIGH),
+                SafetySetting(HarmCategory.SEXUALLY_EXPLICIT, BlockThreshold.ONLY_HIGH),
+                SafetySetting(HarmCategory.HARASSMENT, BlockThreshold.ONLY_HIGH)
+            )
+
+            // Create the generative model
+            val generativeModel = GenerativeModel(
+                modelName = "gemini-2.0-flash", // Using the constant defined in companion object
+                apiKey = "AIzaSyD7UzsETcBH411hr13elPTa5aH0KF5yrkI",       // Using the constant defined in companion object
+                safetySettings = safetySettings
+            )
+
+            // Add special instructions to preserve newlines
+            val contextualPrompt = buildContextualPrompt(prompt, recentSymptoms)
+
+            // Generate content
+            val response = generativeModel.generateContent(contextualPrompt)
+            var responseText = response.text?.trim() ?: throw IOException("Empty response from AI model")
+
+            // Clean the response text to remove markdown formatting but preserve newlines
+            responseText = cleanResponseText(responseText)
+
+            // Create and return suggestion
+            return createSuggestion(prompt, responseText)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in AI generation", e)
+            return null
+        }
     }
 
-    // Helper functions to generate contextual titles based on prompt and symptoms
-    private fun getGeneratedTitle(prompt: String, symptoms: List<Symptom>): String {
-        // If no prompt but has symptoms, generate title based on symptoms
-        if (prompt.isBlank() && symptoms.isNotEmpty()) {
-            return when {
-                symptoms.any { it.hotFlashes } -> "Managing Hot Flashes"
-                symptoms.any { it.nightSweats } -> "Dealing with Night Sweats"
-                symptoms.any { it.moodChanges } -> "Mood Management Tips"
-                symptoms.any { it.sleepIssues } -> "Improving Sleep Quality"
-                symptoms.any { it.fatigue } -> "Combating Fatigue"
-                else -> "Health Suggestion"
+    /**
+     * Clean response text by removing markdown symbols and formatting
+     * while carefully preserving line breaks
+     */
+    private fun cleanResponseText(text: String): String {
+        // First, replace all Windows-style line breaks with Unix-style
+        var cleaned = text.replace("\r\n", "\n")
+
+        // Next, normalize any double line breaks to ensure consistent handling
+        cleaned = cleaned.replace(Regex("\n{3,}"), "\n\n")
+
+        // Now process markdown elements while preserving line structure
+        cleaned = cleaned
+            // Replace markdown headers with plain text
+            .replace(Regex("^#{1,6}\\s+(.+)$", RegexOption.MULTILINE), "$1")
+            // Replace markdown bold with plain text
+            .replace(Regex("\\*\\*([^*]+?)\\*\\*"), "$1")
+            .replace(Regex("__([^_]+?)__"), "$1")
+            // Replace markdown italic with plain text
+            .replace(Regex("\\*([^*]+?)\\*"), "$1")
+            .replace(Regex("_([^_]+?)_"), "$1")
+            // Replace markdown bullet points with regular bullet points
+            .replace(Regex("^\\s*[\\*\\-]\\s+(.+)$", RegexOption.MULTILINE), "• $1")
+            // Replace markdown lists with simple bullet points
+            .replace(Regex("^\\s*\\d+\\.\\s+(.+)$", RegexOption.MULTILINE), "• $1")
+            // Clean up any other markdown artifacts
+            .replace(Regex("`([^`]+)`"), "$1")
+
+        // Clean up any remaining markdown symbols
+        cleaned = cleaned
+            .replace("**", "")
+            .replace("*", "")
+            .replace("__", "")
+            .replace("_", "")
+            // Remove links but keep link text
+            .replace(Regex("\\[([^\\]]+)\\]\\([^)]+\\)"), "$1")
+
+        // Clean up whitespace but preserve line breaks
+        cleaned = cleaned
+            // Replace multiple spaces with a single space
+            .replace(Regex("[ \\t]{2,}"), " ")
+            .trim()
+
+        return cleaned
+    }
+
+    /**
+     * Build a contextual prompt based on user input and recent symptoms
+     */
+    private fun buildContextualPrompt(prompt: String, recentSymptoms: List<Symptom>): String {
+        val basePrompt = StringBuilder(
+            "You are a helpful health assistant providing evidence-based information about menopause. " +
+            "Provide concise, practical suggestions. Focus on lifestyle adjustments, self-care strategies, " +
+            "and general information. Do not diagnose conditions or prescribe medications. " +
+            "Keep responses under 500 characters when possible. DO NOT use markdown formatting, asterisks, or any special formatting. " +
+            "Use simple text formatting with clear line breaks between paragraphs and bullet points starting with • character. " +
+            "Preserve all line breaks in your response exactly as intended for display."
+        )
+
+        // Add symptom context if available
+        if (recentSymptoms.isNotEmpty()) {
+            basePrompt.append("\n\nRecent symptoms reported by the user:")
+            recentSymptoms.forEach { symptom ->
+                val symptomList = mutableListOf<String>()
+                if (symptom.hotFlashes) symptomList.add("Hot Flashes")
+                if (symptom.nightSweats) symptomList.add("Night Sweats")
+                if (symptom.sleepIssues) symptomList.add("Sleep Issues")
+                if (symptom.moodChanges) symptomList.add("Mood Changes")
+                if (symptom.fatigue) symptomList.add("Fatigue")
+                if (symptom.otherSymptoms.isNotEmpty()) symptomList.add(symptom.otherSymptoms)
+
+                basePrompt.append("\n- Symptoms on ${symptom.date}: ${symptomList.joinToString(", ")}")
+                basePrompt.append(" (Severity: ${symptom.severity}/10)")
+                if (symptom.description.isNotEmpty()) {
+                    basePrompt.append(". Notes: ${symptom.description}")
+                }
             }
         }
 
-        // Otherwise use prompt for title generation
-        return when {
-            prompt.contains("hot flash", ignoreCase = true) -> "Managing Hot Flashes"
-            prompt.contains("sweat", ignoreCase = true) -> "Dealing with Night Sweats"
-            prompt.contains("mood", ignoreCase = true) -> "Mood Management Tips"
-            prompt.contains("sleep", ignoreCase = true) -> "Improving Sleep Quality"
-            prompt.contains("tired", ignoreCase = true) || prompt.contains("fatigue", ignoreCase = true) -> "Combating Fatigue"
-            prompt.contains("diet", ignoreCase = true) || prompt.contains("food", ignoreCase = true) -> "Diet and Nutrition"
-            prompt.contains("exercise", ignoreCase = true) || prompt.contains("workout", ignoreCase = true) -> "Exercise Benefits"
-            prompt.contains("supplement", ignoreCase = true) || prompt.contains("vitamin", ignoreCase = true) -> "Supplement Information"
-            prompt.contains("memory", ignoreCase = true) || prompt.contains("brain fog", ignoreCase = true) -> "Cognitive Health"
-            prompt.contains("weight", ignoreCase = true) -> "Weight Management"
-            prompt.contains("sex", ignoreCase = true) || prompt.contains("libido", ignoreCase = true) -> "Sexual Health"
-            prompt.contains("bone", ignoreCase = true) || prompt.contains("osteoporosis", ignoreCase = true) -> "Bone Health"
-            prompt.contains("period", ignoreCase = true) || prompt.contains("menstrual", ignoreCase = true) -> "Menstrual Changes"
-            prompt.contains("skin", ignoreCase = true) || prompt.contains("dry", ignoreCase = true) -> "Skin Care"
-            prompt.contains("heart", ignoreCase = true) || prompt.contains("cardiovascular", ignoreCase = true) -> "Heart Health"
-            prompt.contains("joint", ignoreCase = true) || prompt.contains("pain", ignoreCase = true) -> "Pain Management"
+        // Add user query
+        basePrompt.append("\n\nUser query: ")
+        basePrompt.append(if (prompt.isNotEmpty()) prompt else "Please provide general advice based on my recent symptoms.")
+
+        return basePrompt.toString()
+    }
+
+    /**
+     * Generate a fallback suggestion when AI is unavailable
+     */
+    private fun generateFallbackSuggestion(prompt: String, recentSymptoms: List<Symptom>): Suggestion {
+        // Generate title based on prompt or symptoms
+        val title = when {
+            prompt.isNotEmpty() -> "Response to: ${prompt.take(50)}${if (prompt.length > 50) "..." else ""}"
+            recentSymptoms.isNotEmpty() -> "Advice based on recent symptoms"
+            else -> "General menopause information"
+        }
+
+        // Generate content based on symptoms or prompt
+        val content = when {
+            // If we have matching symptoms, use symptom-specific advice
+            recentSymptoms.isNotEmpty() -> {
+                val symptomAdvice = StringBuilder()
+
+                // Check for specific symptoms
+                recentSymptoms.forEach { symptom ->
+                    if (symptom.hotFlashes) symptomAdvice.append("${fallbackSuggestions["Hot Flashes"]}\n\n")
+                    if (symptom.nightSweats) symptomAdvice.append("${fallbackSuggestions["Night Sweats"]}\n\n")
+                    if (symptom.sleepIssues) symptomAdvice.append("${fallbackSuggestions["Sleep Issues"]}\n\n")
+                    if (symptom.moodChanges) symptomAdvice.append("${fallbackSuggestions["Mood Changes"]}\n\n")
+                    if (symptom.fatigue) symptomAdvice.append("${fallbackSuggestions["Fatigue"]}\n\n")
+                }
+
+                // If no specific advice was found, use general advice
+                if (symptomAdvice.isEmpty()) {
+                    topicFallbackResponses["general"] ?: "Consider tracking your symptoms and discussing them with your healthcare provider."
+                } else {
+                    symptomAdvice.toString().trim()
+                }
+            }
+
+            // If we have a prompt, try to match it with a topic
+            prompt.isNotEmpty() -> {
+                val lowerPrompt = prompt.lowercase()
+                when {
+                    lowerPrompt.contains("diet") || lowerPrompt.contains("food") || lowerPrompt.contains("eat") ->
+                        topicFallbackResponses["diet"] ?: ""
+                    lowerPrompt.contains("exercise") || lowerPrompt.contains("workout") || lowerPrompt.contains("activity") ->
+                        topicFallbackResponses["exercise"] ?: ""
+                    lowerPrompt.contains("sleep") || lowerPrompt.contains("insomnia") || lowerPrompt.contains("night") ->
+                        topicFallbackResponses["sleep"] ?: ""
+                    else -> topicFallbackResponses["general"] ?: ""
+                }
+            }
+
+            // Default fallback
+            else -> topicFallbackResponses["general"] ?:
+                "Menopause is a natural transition. Consider discussing your symptoms with your healthcare provider."
+        }
+
+        return Suggestion(
+            id = UUID.randomUUID().toString(),
+            title = title,
+            content = content,
+            prompt = prompt,
+            timestamp = System.currentTimeMillis()
+        )
+    }
+
+    /**
+     * Create a suggestion with a generated title
+     */
+    private fun createSuggestion(prompt: String, content: String): Suggestion {
+        // Create a title from the first few words of content or prompt
+        val title = when {
+            content.isNotEmpty() -> {
+                val firstLine = content.substringBefore('\n').trim()
+                if (firstLine.length > 50) "${firstLine.substring(0, 47)}..." else firstLine
+            }
+            prompt.isNotEmpty() -> {
+                if (prompt.length > 50) "Response to: ${prompt.substring(0, 47)}..." else "Response to: $prompt"
+            }
             else -> "Menopause Information"
         }
-    }
 
-    // Helper function to generate content based on prompt and logged symptoms
-    private fun getGeneratedContent(prompt: String, symptoms: List<Symptom>): String {
-        val relevantSymptoms = mutableListOf<String>()
-
-        // Extract relevant symptoms
-        symptoms.forEach { symptom ->
-            when {
-                symptom.hotFlashes -> relevantSymptoms.add("hot flashes")
-                symptom.nightSweats -> relevantSymptoms.add("night sweats")
-                symptom.moodChanges -> relevantSymptoms.add("mood changes")
-                symptom.sleepIssues -> relevantSymptoms.add("sleep issues")
-                symptom.fatigue -> relevantSymptoms.add("fatigue")
-                symptom.otherSymptoms.isNotBlank() -> relevantSymptoms.add(symptom.otherSymptoms)
-            }
-        }
-
-        // Create personalized response based on prompt and symptoms
-        val responseBuilder = StringBuilder()
-
-        when {
-            // If both prompt and symptoms are present
-            prompt.isNotBlank() && relevantSymptoms.isNotEmpty() -> {
-                responseBuilder.append("Based on your question and recently logged symptoms (${relevantSymptoms.joinToString(", ")}), here's my advice:\n\n")
-
-                // Add advice for each relevant symptom
-                relevantSymptoms.distinct().forEach { symptom ->
-                    responseBuilder.append(getAdviceForSymptom(symptom))
-                }
-
-                // Add advice for the prompt in a consistent format with symptom advice
-                responseBuilder.append("• For your question about ${getQuestionTopic(prompt)}: ")
-                responseBuilder.append(getAdviceForPrompt(prompt))
-                responseBuilder.append("\n\n")
-            }
-
-            // If only symptoms are present (no prompt)
-            prompt.isBlank() && relevantSymptoms.isNotEmpty() -> {
-                responseBuilder.append("Based on your recently logged symptoms (${relevantSymptoms.joinToString(", ")}), here's my advice:\n\n")
-
-                // Add advice for each relevant symptom
-                relevantSymptoms.distinct().forEach { symptom ->
-                    responseBuilder.append(getAdviceForSymptom(symptom))
-                }
-            }
-
-            // If only prompt is present (no symptoms)
-            else -> {
-                responseBuilder.append("Regarding your question about ${getQuestionTopic(prompt)}:\n\n")
-                responseBuilder.append("• ")
-                responseBuilder.append(getAdviceForPrompt(prompt))
-            }
-        }
-
-        return responseBuilder.toString()
-    }
-
-    // Helper method to determine the topic of the question
-    private fun getQuestionTopic(prompt: String): String {
-        return when {
-            prompt.contains("hot flash", ignoreCase = true) -> "hot flashes"
-            prompt.contains("sweat", ignoreCase = true) -> "night sweats"
-            prompt.contains("mood", ignoreCase = true) -> "mood changes"
-            prompt.contains("sleep", ignoreCase = true) -> "sleep"
-            prompt.contains("tired", ignoreCase = true) || prompt.contains("fatigue", ignoreCase = true) -> "fatigue"
-            prompt.contains("diet", ignoreCase = true) || prompt.contains("food", ignoreCase = true) || prompt.contains("eat", ignoreCase = true) -> "diet"
-            prompt.contains("exercise", ignoreCase = true) || prompt.contains("workout", ignoreCase = true) || prompt.contains("activity", ignoreCase = true) -> "exercise"
-            prompt.contains("supplement", ignoreCase = true) || prompt.contains("vitamin", ignoreCase = true) -> "supplements"
-            prompt.contains("memory", ignoreCase = true) || prompt.contains("brain fog", ignoreCase = true) || prompt.contains("concentration", ignoreCase = true) -> "cognitive changes"
-            prompt.contains("weight", ignoreCase = true) || prompt.contains("gain", ignoreCase = true) -> "weight management"
-            prompt.contains("sex", ignoreCase = true) || prompt.contains("libido", ignoreCase = true) || prompt.contains("vaginal dryness", ignoreCase = true) -> "intimate health"
-            prompt.contains("bone", ignoreCase = true) || prompt.contains("osteoporosis", ignoreCase = true) -> "bone health"
-            prompt.contains("headache", ignoreCase = true) || prompt.contains("migraine", ignoreCase = true) -> "headaches"
-            prompt.contains("period", ignoreCase = true) || prompt.contains("menstrual", ignoreCase = true) -> "menstrual changes"
-            prompt.contains("skin", ignoreCase = true) || prompt.contains("dry", ignoreCase = true) -> "skin changes"
-            prompt.contains("heart", ignoreCase = true) || prompt.contains("cardiovascular", ignoreCase = true) -> "heart health"
-            prompt.contains("joint", ignoreCase = true) || prompt.contains("pain", ignoreCase = true) -> "joint pain"
-            else -> "menopause"
-        }
-    }
-
-    private fun getAdviceForSymptom(symptom: String): String {
-        return when {
-            symptom.contains("hot flash", ignoreCase = true) ->
-                "• For hot flashes: Try wearing lightweight, breathable clothing and keep your environment cool. " +
-                "Regular exercise and limiting spicy foods, caffeine, and alcohol may also help reduce hot flashes.\n\n"
-
-            symptom.contains("night sweat", ignoreCase = true) ->
-                "• For night sweats: Use moisture-wicking sleepwear and bedding. Keep your bedroom cool and well-ventilated. " +
-                "Try to maintain a consistent sleep schedule and avoid triggers like alcohol or caffeine before bed.\n\n"
-
-            symptom.contains("mood", ignoreCase = true) ->
-                "• For mood changes: Regular physical activity can help improve mood. Consider practicing mindfulness or yoga. " +
-                "Maintain social connections and don't hesitate to speak with a healthcare provider if mood changes are affecting your quality of life.\n\n"
-
-            symptom.contains("sleep", ignoreCase = true) ->
-                "• For sleep issues: Establish a regular sleep schedule. Keep your bedroom cool and dark. " +
-                "Avoid screen time and caffeine before bedtime. Consider relaxation techniques like meditation.\n\n"
-
-            symptom.contains("fatigue", ignoreCase = true) || symptom.contains("tired", ignoreCase = true) ->
-                "• For fatigue: Ensure you're getting adequate rest. Consider short power naps (15-20 minutes) during the day. " +
-                "Regular moderate exercise can actually boost energy levels. Evaluate your iron levels with your healthcare provider.\n\n"
-
-            else ->
-                "• For your other symptoms: It's important to track these symptoms and discuss them with your healthcare provider " +
-                "for personalized advice and treatment options.\n\n"
-        }
-    }
-
-    private fun getAdviceForPrompt(prompt: String): String {
-        // Extract relevant keywords from the prompt
-        val cleanedPrompt = prompt.toLowerCase()
-
-        // Check for specific topics and provide tailored responses
-        return when {
-            cleanedPrompt.contains("hot flash") ->
-                "Hot flashes can be managed by maintaining a cooler environment, dressing in layers, avoiding triggers like spicy foods, " +
-                "caffeine and alcohol, and practicing deep breathing techniques when a hot flash begins."
-
-            cleanedPrompt.contains("sweat") ->
-                "Night sweats can be disruptive to sleep. Consider using moisture-wicking sleepwear and bedding, " +
-                "keeping your bedroom cool, and avoiding alcohol and caffeine before bedtime."
-
-            cleanedPrompt.contains("mood") ->
-                "Mood changes during menopause are common due to hormonal fluctuations. Regular exercise, stress management techniques, " +
-                "adequate sleep, and social support can help. If mood changes are severe, consider speaking with a healthcare provider."
-
-            cleanedPrompt.contains("sleep") ->
-                "Good sleep hygiene is essential. Establish a consistent sleep schedule, create a cool and dark sleeping environment, " +
-                "avoid screens before bedtime, limit caffeine and alcohol, and consider relaxation techniques like meditation or gentle yoga."
-
-            cleanedPrompt.contains("tired") || cleanedPrompt.contains("fatigue") ->
-                "Fatigue during menopause can be managed by ensuring adequate sleep, staying hydrated, eating a balanced diet, " +
-                "engaging in regular physical activity, and managing stress. Consider having your iron and thyroid levels checked."
-
-            cleanedPrompt.contains("diet") || cleanedPrompt.contains("food") || cleanedPrompt.contains("eat") ->
-                "A balanced diet rich in calcium, vitamin D, and whole foods can help manage menopause symptoms. Consider adding foods with phytoestrogens like soy, flaxseed, and legumes. Limit processed foods, caffeine, and alcohol which can trigger hot flashes."
-
-            cleanedPrompt.contains("exercise") || cleanedPrompt.contains("workout") || cleanedPrompt.contains("activity") ->
-                "Regular exercise can help manage weight, improve mood, and promote better sleep during menopause. Aim for a mix of aerobic activity, strength training, and flexibility exercises. Walking, swimming, yoga, and tai chi are excellent options."
-
-            cleanedPrompt.contains("supplement") || cleanedPrompt.contains("vitamin") ->
-                "Some supplements like black cohosh, red clover, and evening primrose oil may help with menopause symptoms, but research results are mixed. Always consult with your healthcare provider before starting any supplements as they may interact with medications."
-
-            cleanedPrompt.contains("memory") || cleanedPrompt.contains("brain fog") || cleanedPrompt.contains("concentration") ->
-                "Mental fogginess during menopause is common. Stay mentally active with puzzles, reading, and learning new skills. Regular exercise, adequate sleep, and stress management can also help improve cognitive function."
-
-            cleanedPrompt.contains("weight") || cleanedPrompt.contains("gain") ->
-                "Weight changes are common during menopause due to hormonal shifts, decreased muscle mass, and metabolic changes. Focus on nutrient-dense foods, portion control, regular physical activity, and strength training to maintain a healthy weight."
-
-            cleanedPrompt.contains("sex") || cleanedPrompt.contains("libido") || cleanedPrompt.contains("vaginal dryness") ->
-                "Changes in sexual desire and comfort are common during menopause. Vaginal moisturizers, lubricants, and regular sexual activity can help maintain vaginal health. Discuss persistent issues with your healthcare provider as treatments are available."
-
-            cleanedPrompt.contains("bone") || cleanedPrompt.contains("osteoporosis") ->
-                "Bone density typically decreases during menopause. Ensure adequate calcium (1000-1200mg daily) and vitamin D intake, engage in weight-bearing exercises, and consider a bone density scan if you're concerned about osteoporosis risk."
-
-            cleanedPrompt.contains("headache") || cleanedPrompt.contains("migraine") ->
-                "Headaches may change in pattern or intensity during menopause due to hormonal fluctuations. Identify and avoid triggers, maintain a regular sleep schedule, stay hydrated, and practice stress management techniques."
-
-            cleanedPrompt.contains("period") || cleanedPrompt.contains("menstrual") || cleanedPrompt.contains("bleeding") ->
-                "Menstrual changes are common during perimenopause. Periods may become irregular, lighter or heavier than usual. Track your cycle patterns and report significant changes to your healthcare provider, especially heavy bleeding or periods that resume after 12 months without one."
-
-            cleanedPrompt.contains("hormone") || cleanedPrompt.contains("hrt") || cleanedPrompt.contains("therapy") ->
-                "Hormone replacement therapy (HRT) can effectively manage many menopause symptoms. It comes in various forms including pills, patches, gels, and creams. Benefits and risks vary depending on your age, health history, and when you start treatment. Discuss options with a healthcare provider specializing in women's health."
-
-            cleanedPrompt.contains("skin") || cleanedPrompt.contains("dry") || cleanedPrompt.contains("itchy") ->
-                "Skin changes during menopause include increased dryness, reduced elasticity, and sometimes itchiness due to decreased estrogen. Use gentle, fragrance-free cleansers, moisturize daily, drink plenty of water, and consider using a humidifier. Products with hyaluronic acid, glycerin, or ceramides can be particularly helpful."
-
-            cleanedPrompt.contains("heart") || cleanedPrompt.contains("cardiovascular") ->
-                "Heart health becomes increasingly important during and after menopause as estrogen's protective effects decline. Focus on a heart-healthy diet with omega-3 fatty acids, regular cardiovascular exercise, maintaining healthy weight and blood pressure, limiting alcohol, and not smoking. Regular health screenings are essential."
-
-            cleanedPrompt.contains("joint") || cleanedPrompt.contains("pain") || cleanedPrompt.contains("ache") ->
-                "Joint pain during menopause can be related to hormonal changes. Maintaining a healthy weight reduces joint stress. Regular, low-impact exercise like swimming or cycling helps preserve joint function. Anti-inflammatory foods, adequate hydration, and proper stretching may also provide relief."
-
-            cleanedPrompt.contains("hair") || cleanedPrompt.contains("thinning") ->
-                "Hair thinning is common during menopause due to hormonal changes. Try gentle hair care products, avoid heat styling when possible, and consider a diet rich in protein, iron, and vitamins. Topical minoxidil may help, and in some cases, prescription treatments might be appropriate after consulting with a dermatologist."
-
-            cleanedPrompt.contains("anxiety") || cleanedPrompt.contains("stress") || cleanedPrompt.contains("worry") ->
-                "Anxiety can increase during menopause due to hormonal fluctuations. Regular exercise, mindfulness meditation, and breathing techniques can help manage stress. Limit caffeine and alcohol, maintain social connections, and consider cognitive-behavioral therapy if anxiety interferes with daily life."
-
-            // For any other questions, provide specific menopause-related information rather than generic advice
-            else -> {
-                val menopauseTopics = listOf(
-                    "Menopause typically occurs between ages 45-55, with perimenopause beginning several years earlier. Symptoms vary widely in type, intensity, and duration. The transition is confirmed after 12 consecutive months without a period. Understanding your specific stage can help you better manage symptoms.",
-
-                    "Managing menopause symptoms often involves a personalized approach combining lifestyle changes, mind-body practices, and possibly medical treatments. Regular physical activity, a balanced diet rich in whole foods, stress reduction techniques, and adequate sleep form the foundation of symptom management.",
-
-                    "During menopause, your body undergoes significant hormonal changes, primarily decreasing estrogen and progesterone levels. These changes can affect multiple body systems beyond reproductive health, including bone density, cardiovascular health, and metabolism, making holistic self-care especially important.",
-
-                    "Self-care during menopause includes staying well-hydrated, maintaining a consistent sleep schedule, practicing stress management, nurturing social connections, and setting reasonable expectations for yourself. Many women find this a good time to reevaluate priorities and focus on personal well-being.",
-
-                    "Complementary approaches like acupuncture, mindfulness meditation, and yoga show promising results for managing various menopause symptoms. When combined with conventional treatments and lifestyle modifications, these practices may provide additional relief and improve overall quality of life."
-                )
-
-                // Use the prompt's hash code to select a relevant response that will be consistent for the same question
-                val responseIndex = Math.abs(prompt.hashCode()) % menopauseTopics.size
-                menopauseTopics[responseIndex]
-            }
-        }
+        return Suggestion(
+            id = UUID.randomUUID().toString(),
+            title = title,
+            content = content,
+            prompt = prompt,
+            timestamp = System.currentTimeMillis()
+        )
     }
 }
