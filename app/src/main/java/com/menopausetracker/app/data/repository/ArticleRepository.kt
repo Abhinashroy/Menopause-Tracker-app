@@ -1,55 +1,101 @@
 package com.menopausetracker.app.data.repository
 
-import android.app.Application
+import android.content.Context
+import com.menopausetracker.app.data.api.RssArticleService
+import com.menopausetracker.app.data.db.ArticleDao
 import com.menopausetracker.app.data.db.ArticleDatabase
 import com.menopausetracker.app.data.model.Article
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.util.Calendar
 
-class ArticleRepository(application: Application) {
-    private val database = ArticleDatabase.getInstance(application)
-    private val articleDao = database.articleDao()
+/**
+ * Repository to manage article data from both remote API and local database
+ */
+class ArticleRepository(private val context: Context) {
+    private val rssArticleService = RssArticleService(context)
+    private val articleDao: ArticleDao
 
-    // Hardcoded articles for demonstration
-    private val hardcodedArticles = listOf(
-        Article(
-            id = "1",
-            title = "Understanding Menopause Symptoms",
-            content = "Menopause is a natural biological process that marks the end of a woman's reproductive years. Common symptoms include hot flashes, night sweats, mood changes, and sleep problems. Understanding these symptoms can help you better manage this transition period.",
-            imageUrl = "https://example.com/menopause-symptoms.jpg"
-        ),
-        Article(
-            id = "2",
-            title = "Natural Remedies for Hot Flashes",
-            content = "Hot flashes are one of the most common symptoms of menopause. This article explores various natural remedies that may help manage hot flashes, including lifestyle changes, dietary modifications, and herbal supplements.",
-            imageUrl = "https://example.com/hot-flashes.jpg"
-        ),
-        Article(
-            id = "3",
-            title = "Managing Sleep During Menopause",
-            content = "Sleep disturbances are common during menopause. Learn about the connection between menopause and sleep, and discover practical tips for improving your sleep quality during this transition.",
-            imageUrl = "https://example.com/sleep-menopause.jpg"
-        )
-    )
+    init {
+        val database = ArticleDatabase.getInstance(context)
+        articleDao = database.articleDao()
+    }
 
-    suspend fun getAllArticles(): List<Article> = withContext(Dispatchers.IO) {
-        // In a real app, this would fetch from an API
-        // For now, we'll use hardcoded articles
-        val savedArticles = articleDao.getSavedArticles()
-        hardcodedArticles.map { article ->
-            article.copy(isSaved = savedArticles.any { it.id == article.id })
+    /**
+     * Get recent articles, refreshing from network if needed
+     */
+    suspend fun getArticles(forceRefresh: Boolean = false): Flow<List<Article>> {
+        if (forceRefresh) {
+            refreshArticles()
+        }
+
+        return articleDao.getRecentArticles(50)
+    }
+
+    /**
+     * Get articles from a specific category
+     */
+    fun getArticlesByCategory(category: String): Flow<List<Article>> {
+        return articleDao.getArticlesByCategory(category)
+    }
+
+    /**
+     * Get saved/bookmarked articles
+     */
+    fun getSavedArticles(): Flow<List<Article>> {
+        return articleDao.getSavedArticles()
+    }
+
+    /**
+     * Get a specific article by its ID
+     */
+    suspend fun getArticleById(id: String): Article? {
+        return articleDao.getArticleById(id)
+    }
+
+    /**
+     * Save or unsave an article
+     */
+    suspend fun toggleArticleSaved(articleId: String, isSaved: Boolean) = withContext(Dispatchers.IO) {
+        articleDao.updateArticleSavedStatus(articleId, isSaved)
+    }
+
+    /**
+     * Refresh articles from online sources
+     */
+    suspend fun refreshArticles(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            // Use the RssArticleService to fetch articles (removed fallback)
+            val articles = rssArticleService.fetchArticles()
+
+            // If no articles were found, return false to indicate failure
+            if (articles.isEmpty()) {
+                return@withContext false
+            }
+
+            // Keep saved status for existing articles
+            val updatedArticles = articles.map { article ->
+                val existing = articleDao.getArticleById(article.id)
+                if (existing != null && existing.isSaved) {
+                    article.copy(isSaved = true)
+                } else {
+                    article
+                }
+            }
+
+            articleDao.insertArticles(updatedArticles)
+
+            // Clean up old, unsaved articles (older than 30 days)
+            val calendar = Calendar.getInstance()
+            calendar.add(Calendar.DAY_OF_YEAR, -30)
+            val thirtyDaysAgo = calendar.timeInMillis
+            articleDao.deleteOldUnsavedArticles(thirtyDaysAgo)
+
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
-
-    suspend fun getSavedArticles(): List<Article> = withContext(Dispatchers.IO) {
-        articleDao.getSavedArticles()
-    }
-
-    suspend fun toggleSaveArticle(article: Article) = withContext(Dispatchers.IO) {
-        if (article.isSaved) {
-            articleDao.deleteArticle(article)
-        } else {
-            articleDao.insertArticle(article)
-        }
-    }
-} 
+}

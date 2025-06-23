@@ -4,14 +4,11 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
+import androidx.room.TypeConverters
 import com.menopausetracker.app.data.model.Article
 
-@Database(entities = [Article::class], version = 1, exportSchema = false)
+@Database(entities = [Article::class], version = 2, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class ArticleDatabase : RoomDatabase() {
     abstract fun articleDao(): ArticleDao
 
@@ -25,25 +22,12 @@ abstract class ArticleDatabase : RoomDatabase() {
                     context.applicationContext,
                     ArticleDatabase::class.java,
                     "article_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration() // This allows Room to recreate the database if the version changes
+                .build()
                 INSTANCE = instance
                 instance
             }
         }
     }
 }
-
-@Dao
-interface ArticleDao {
-    @Query("SELECT * FROM articles ORDER BY id ASC")
-    suspend fun getSavedArticles(): List<Article>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertArticle(article: Article)
-
-    @Delete
-    suspend fun deleteArticle(article: Article)
-
-    @Query("DELETE FROM articles")
-    suspend fun deleteAllArticles()
-} 

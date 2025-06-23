@@ -9,76 +9,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Font Size Settings Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_font_size"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp"
-            app:layout_constraintTop_toTopOf="parent">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Font Size"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <RadioGroup
-                    android:id="@+id/font_size_group"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical">
-
-                    <RadioButton
-                        android:id="@+id/radio_small"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Small"
-                        android:textSize="14sp" />
-
-                    <RadioButton
-                        android:id="@+id/radio_normal"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Normal"
-                        android:textSize="16sp" />
-
-                    <RadioButton
-                        android:id="@+id/radio_large"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Large"
-                        android:textSize="18sp" />
-                </RadioGroup>
-
-                <TextView
-                    android:id="@+id/settings_saved_message"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Settings saved!"
-                    android:textColor="@android:color/holo_green_dark"
-                    android:visibility="gone" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_save_settings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="Save Settings" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_disclaimer"
             android:layout_width="match_parent"
@@ -86,7 +16,7 @@
             android:layout_marginBottom="16dp"
             app:cardCornerRadius="8dp"
             app:cardElevation="4dp"
-            app:layout_constraintTop_toBottomOf="@id/card_font_size">
+            app:layout_constraintTop_toTopOf="parent">
 
             <TextView
                 android:layout_width="match_parent"
@@ -161,4 +91,3 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.core.widget.NestedScrollView>
-

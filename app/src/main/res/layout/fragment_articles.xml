@@ -11,6 +11,30 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <HorizontalScrollView
+            android:id="@+id/categoryScrollView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/categoryChipGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleLine="true"
+                app:singleSelection="true">
+
+                <!-- Chips will be added programmatically -->
+
+            </com.google.android.material.chip.ChipGroup>
+        </HorizontalScrollView>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/articlesRecyclerView"
             android:layout_width="0dp"
@@ -20,8 +44,23 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/categoryScrollView"
             tools:listitem="@layout/item_article" />
+
+        <TextView
+            android:id="@+id/emptyStateTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No articles found"
+            android:textAlignment="center"
+            android:textSize="16sp"
+            android:visibility="gone"
+            android:gravity="center"
+            android:padding="16dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <ProgressBar
             android:id="@+id/progressBar"
@@ -34,18 +73,7 @@
             app:layout_constraintTop_toTopOf="parent"
             tools:visibility="visible" />
 
-        <TextView
-            android:id="@+id/errorTextView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/error_loading_articles"
-            android:textAlignment="center"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:visibility="visible" />
+
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabSavedArticles"
@@ -59,4 +87,4 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-</androidx.swiperefreshlayout.widget.SwipeRefreshLayout> 
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

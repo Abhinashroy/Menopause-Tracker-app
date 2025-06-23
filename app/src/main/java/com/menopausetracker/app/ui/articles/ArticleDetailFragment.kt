@@ -1,20 +1,27 @@
 package com.menopausetracker.app.ui.articles
 
-import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
+import com.google.android.material.snackbar.Snackbar
 import com.menopausetracker.app.R
+import com.menopausetracker.app.data.model.Article
 import com.menopausetracker.app.databinding.FragmentArticleDetailBinding
-import com.menopausetracker.app.util.FontSizeManager
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class ArticleDetailFragment : Fragment() {
     private var _binding: FragmentArticleDetailBinding? = null
     private val binding get() = _binding!!
+
+    private lateinit var viewModel: ArticlesViewModel
+    private var currentArticle: Article? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -28,70 +35,118 @@ class ArticleDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        try {
-            // Set up back button
-            binding.backButton.setOnClickListener {
+        // Initialize ViewModel
+        viewModel = ViewModelProvider(this).get(ArticlesViewModel::class.java)
+
+        // Setup toolbar navigation
+        binding.toolbar.setNavigationOnClickListener {
+            findNavController().navigateUp()
+        }
+
+        // Get article ID from args using Safe Args
+        val args = ArticleDetailFragmentArgs.fromBundle(requireArguments())
+        loadArticle(args.articleId)
+    }
+
+    private fun loadArticle(articleId: String?) {
+        if (articleId == null) {
+            Snackbar.make(binding.root, "Invalid article ID", Snackbar.LENGTH_SHORT).show()
+            findNavController().navigateUp()
+            return
+        }
+
+        viewModel.getArticleById(articleId).observe(viewLifecycleOwner) { article ->
+            if (article != null) {
+                displayArticle(article)
+                setupActionButtons(article)
+                currentArticle = article
+            } else {
+                Snackbar.make(binding.root, "Article not found", Snackbar.LENGTH_SHORT).show()
                 findNavController().navigateUp()
             }
-
-            // Get article data from arguments
-            arguments?.let { args ->
-                // Try to get articleId as Long first, then fall back to String if needed
-                val articleId = if (args.containsKey("articleId")) {
-                    try {
-                        args.getLong("articleId")
-                    } catch (e: Exception) {
-                        args.getString("articleId") ?: ""
-                    }
-                } else {
-                    ""
-                }
-
-                val title = args.getString("articleTitle") ?: ""
-                val content = args.getString("articleContent") ?: ""
-                val imageUrl = args.getString("articleImageUrl") ?: ""
-
-                // Display article details
-                displayArticle(articleId, title, content, imageUrl)
-            }
-
-            // Apply font size from settings
-            applyFontSize()
-        } catch (e: Exception) {
-            // Log any errors to help with debugging
-            e.printStackTrace()
         }
     }
 
-    private fun displayArticle(id: Any, title: String, content: String, imageUrl: String) {
-        try {
-            // Set title and content
-            binding.articleDetailTitle.text = title
-            binding.articleDetailContent.text = content
+    private fun displayArticle(article: Article) {
+        // Set article title
+        binding.articleDetailTitle.text = article.title
 
-            // Load image
-            if (imageUrl.isNotEmpty()) {
-                Glide.with(requireContext())
-                    .load(imageUrl)
-                    .placeholder(R.drawable.placeholder_image)
-                    .error(R.drawable.error_image)
-                    .into(binding.articleDetailImage)
-            } else {
-                binding.articleDetailImage.setImageResource(R.drawable.placeholder_image)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        // Set article metadata (date, reading time, category)
+        val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+        val dateString = dateFormat.format(article.publishDate)
+        binding.articleMetadata.text = "$dateString • ${article.readTimeMinutes} min read • ${article.category}"
+
+        // Display the complete article content without any limitations
+        binding.articleDetailContent.text = article.content
+
+        // Set article source
+        binding.articleSource.text = article.sourceName
+
+        // Set toolbar title
+        binding.toolbar.title = article.sourceName
+
+        // Load article image
+        article.imageUrl?.let { imageUrl ->
+            Glide.with(requireContext())
+                .load(imageUrl)
+                .placeholder(R.drawable.placeholder_image)
+                .error(R.drawable.error_image)
+                .into(binding.articleDetailImage)
+        } ?: run {
+            binding.articleDetailImage.setImageResource(R.drawable.placeholder_image)
         }
     }
 
-    private fun applyFontSize() {
-        try {
-            // Apply font sizes using the FontSizeManager while preserving theme colors
-            FontSizeManager.applyFontSize(requireContext(), binding.articleDetailTitle, true)
-            FontSizeManager.applyFontSize(requireContext(), binding.articleDetailContent, false)
-        } catch (e: Exception) {
-            e.printStackTrace()
+    /**
+     * Format article content for better readability
+     */
+    private fun formatArticleContent(content: String): String {
+        return content
+            // Replace any remaining HTML entities
+            .replace("&hellip;", "...")
+            .replace("&rsquo;", "'")
+            .replace("&lsquo;", "'")
+            .replace("&ldquo;", """)
+            .replace("&rdquo;", """)
+            // Ensure proper paragraph breaks
+            .replace("\n\n\n", "\n\n")
+            .replace("\n\n\n", "\n\n")
+    }
+
+    private fun setupActionButtons(article: Article) {
+        // Save button
+        val saveButtonText = if (article.isSaved) "Unsave" else "Save"
+        val saveButtonIcon = if (article.isSaved) R.drawable.ic_saved else R.drawable.ic_save
+
+        binding.btnSaveArticle.text = saveButtonText
+        // Replace setIcon with setCompoundDrawablesWithIntrinsicBounds
+        binding.btnSaveArticle.setCompoundDrawablesWithIntrinsicBounds(saveButtonIcon, 0, 0, 0)
+
+        binding.btnSaveArticle.setOnClickListener {
+            viewModel.toggleArticleSaved(article)
+            val message = if (article.isSaved) "Article removed from saved" else "Article saved"
+            Snackbar.make(binding.root, message, Snackbar.LENGTH_SHORT).show()
+
+            // Update button appearance
+            setupActionButtons(article.copy(isSaved = !article.isSaved))
         }
+
+        // Share button
+        binding.btnShareArticle.setOnClickListener {
+            shareArticle(article)
+        }
+    }
+
+    private fun shareArticle(article: Article) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, article.title)
+            putExtra(
+                Intent.EXTRA_TEXT,
+                "Check out this article about menopause: \"${article.title}\" from ${article.sourceName}\n\n${article.sourceUrl}"
+            )
+        }
+        startActivity(Intent.createChooser(shareIntent, "Share Article"))
     }
 
     override fun onDestroyView() {

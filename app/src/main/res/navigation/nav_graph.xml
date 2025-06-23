@@ -57,7 +57,8 @@
         android:label="Article Detail">
         <argument
             android:name="articleId"
-            app:argType="long" />
+            app:argType="string"
+            app:nullable="true" />
     </fragment>
 
     <!-- Symptom History Screen -->
@@ -117,4 +118,3 @@
     </fragment>
 
 </navigation>
-
