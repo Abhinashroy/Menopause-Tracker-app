@@ -111,6 +111,7 @@ class AIPromptFragment : Fragment() {
             }
         )
         binding.recyclerSuggestions.adapter = adapter
+        binding.recyclerSuggestions.scrollToPosition(0)
     }
 
     private fun navigateToSuggestionDetail(suggestion: Suggestion) {

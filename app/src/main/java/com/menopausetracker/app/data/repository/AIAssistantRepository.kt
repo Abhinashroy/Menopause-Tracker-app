@@ -21,7 +21,7 @@ class AIAssistantRepository {
         private const val TAG = "AIAssistantRepo"
         private const val API_TIMEOUT_MS = 10000L // 10 seconds
         private const val MODEL_NAME = "gemini-2.0-flash"
-        private const val API_KEY = "API_KEY" // Replace with actual API key
+        private const val API_KEY = "AIzaSyD7UzsETcBH411hr13elPTa5aH0KF5yrkI" // Replace with actual API key
     }
 
     // In-memory cache for suggestions
@@ -94,7 +94,7 @@ class AIAssistantRepository {
             // Create the generative model
             val generativeModel = GenerativeModel(
                 modelName = "gemini-2.0-flash", // Using the constant defined in companion object
-                apiKey = "API_KEY",       // Using the constant defined in companion object
+                apiKey = "AIzaSyD7UzsETcBH411hr13elPTa5aH0KF5yrkI",       // Using the constant defined in companion object
                 safetySettings = safetySettings
             )
 

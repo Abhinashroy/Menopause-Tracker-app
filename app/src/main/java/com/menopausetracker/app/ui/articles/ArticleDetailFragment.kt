@@ -2,6 +2,7 @@ package com.menopausetracker.app.ui.articles
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.method.LinkMovementMethod
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,6 +14,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.menopausetracker.app.R
 import com.menopausetracker.app.data.model.Article
 import com.menopausetracker.app.databinding.FragmentArticleDetailBinding
+import androidx.core.text.HtmlCompat
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -46,6 +48,9 @@ class ArticleDetailFragment : Fragment() {
         // Get article ID from args using Safe Args
         val args = ArticleDetailFragmentArgs.fromBundle(requireArguments())
         loadArticle(args.articleId)
+
+        // Enable clickable links inside the article body
+        binding.articleDetailContent.movementMethod = LinkMovementMethod.getInstance()
     }
 
     private fun loadArticle(articleId: String?) {
@@ -77,7 +82,7 @@ class ArticleDetailFragment : Fragment() {
         binding.articleMetadata.text = "$dateString • ${article.readTimeMinutes} min read • ${article.category}"
 
         // Display the complete article content without any limitations
-        binding.articleDetailContent.text = article.content
+        binding.articleDetailContent.text = formatArticleContent(article.content)
 
         // Set article source
         binding.articleSource.text = article.sourceName
@@ -100,17 +105,24 @@ class ArticleDetailFragment : Fragment() {
     /**
      * Format article content for better readability
      */
-    private fun formatArticleContent(content: String): String {
-        return content
-            // Replace any remaining HTML entities
-            .replace("&hellip;", "...")
+    private fun formatArticleContent(content: String): CharSequence {
+        val sanitized = content
+            .replace("&hellip;", "…")
             .replace("&rsquo;", "'")
             .replace("&lsquo;", "'")
-            .replace("&ldquo;", """)
-            .replace("&rdquo;", """)
-            // Ensure proper paragraph breaks
-            .replace("\n\n\n", "\n\n")
-            .replace("\n\n\n", "\n\n")
+            .replace("&ldquo;", "\"")
+            .replace("&rdquo;", "\"")
+            .replace("&mdash;", "—")
+            .replace("&ndash;", "–")
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
+
+        // Convert preserved formatting markers and newlines into HTML so HtmlCompat can render them
+        val htmlReady = sanitized
+            .replace("\n\n", "<br/><br/>")
+            .replace("\n", "<br/>")
+
+        return HtmlCompat.fromHtml(htmlReady, HtmlCompat.FROM_HTML_MODE_LEGACY)
     }
 
     private fun setupActionButtons(article: Article) {

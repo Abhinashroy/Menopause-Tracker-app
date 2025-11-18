@@ -4,12 +4,14 @@ import android.content.Context
 import com.menopausetracker.app.data.model.Article
 import com.prof18.rssparser.RssParser
 import com.prof18.rssparser.RssParserBuilder
+import com.prof18.rssparser.model.RssItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.util.Date
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 /**
  * Service for fetching menopause and women's health related articles using RSS Parser library
@@ -28,16 +30,28 @@ class RssArticleService(private val context: Context) {
     companion object {
         // RSS feed URLs specifically for menopause and women's health
         private val RSS_FEEDS = listOf(
-            // Menopause-focused blogs with rich content and images
-            "https://www.feistymenopause.com/blog.rss",
-            "https://www.menopausenaturalsolutions.com/blog.rss",
-
-            "https://jessicasepel.com/feed/",
-            "https://www.intimina.com/blog/feed/",
-
-            "https://blog.metagenics.com/post/category/womens-health/feed/",
-            "https://6pillarhealth.com/f.atom"
+            // High-quality, full-content WordPress feeds
+            "https://www.feistymenopause.com/blog.rss", // Sticking with Feisty Menopause (already good)
+            "https://www.menopausenaturalsolutions.com/blog.rss", // Retain: consistently provides full articles
+            "https://www.mymenopausecentre.com/feed/", // My Menopause Centre insights + clinical posts
+            "https://www.themenopausecharity.org/feed/", // Educational articles with complete bodies
+            "https://www.balance-menopause.com/menopause-library/feed/", // Balance app library feed (rich HTML)
+            "https://www.joinmidi.com/blog?format=rss" // Midi Health Squarespace feed exposing content:encoded
         )
+
+        private val FALLBACK_IMAGE_URLS = listOf(
+            "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1200&q=80"
+        )
+
+        // Legacy feeds we paused because they only surfaced headlines/teasers. Kept here for reference.
+        // https://jessicasepel.com/feed/
+        // https://www.intimina.com/blog/feed/
+        // https://blog.metagenics.com/post/category/womens-health/feed/
+        // https://6pillarhealth.com/f.atom
 
         // Terms related to menopause to filter relevant content
         private val MENOPAUSE_TERMS = listOf(
@@ -66,16 +80,19 @@ class RssArticleService(private val context: Context) {
                 println("Successfully fetched channel: ${channel.title} with ${channel.items.size} articles")
 
                 // Map RSS items to our Article model
-                val articles = channel.items.map { item ->
-                    // Get full content - combining content and description for maximum information
+                val articles = channel.items.mapNotNull { item ->
                     val fullContent = buildFullArticleContent(item.title, item.content, item.description)
+
+                    if (shouldSkipArticle(channel.title, item.title)) {
+                        return@mapNotNull null
+                    }
 
                     Article(
                         id = UUID.nameUUIDFromBytes((item.guid ?: item.link ?: UUID.randomUUID().toString()).toByteArray()).toString(),
                         title = item.title ?: "No Title",
                         summary = item.description?.take(200)?.cleanHtml() ?: "",
                         content = fullContent,
-                        imageUrl = item.image,
+                        imageUrl = resolveImageUrl(item),
                         sourceUrl = item.link ?: "",
                         sourceName = channel.title ?: feedUrl.substringAfter("://").substringBefore("/"),
                         publishDate = Date(), // Using current date instead of item.pubDate to resolve type mismatch
@@ -336,5 +353,45 @@ class RssArticleService(private val context: Context) {
         return sb.toString()
             .replace(Regex("\n{3,}"), "\n\n")
             .trim()
+    }
+
+    private fun resolveImageUrl(item: RssItem): String? {
+        item.image?.takeIf { it.startsWith("http") }?.let { return it }
+
+        extractImageFromHtml(item.content)?.let { return it }
+        extractImageFromHtml(item.description)?.let { return it }
+
+        val seed = item.guid ?: item.link ?: item.title ?: UUID.randomUUID().toString()
+        val index = abs(seed.hashCode()) % FALLBACK_IMAGE_URLS.size
+        return FALLBACK_IMAGE_URLS[index]
+    }
+
+    private fun extractImageFromHtml(html: String?): String? {
+        if (html.isNullOrBlank()) return null
+
+        val regex = Regex("<img[^>]+src=[\"']([^\"'>]+)[\"']", RegexOption.IGNORE_CASE)
+        val match = regex.find(html)
+        val src = match?.groups?.get(1)?.value ?: return null
+
+        return when {
+            src.startsWith("//") -> "https:$src"
+            src.startsWith("http") -> src
+            else -> null
+        }
+    }
+
+    private fun shouldSkipArticle(sourceTitle: String?, articleTitle: String?): Boolean {
+        val normalizedSource = sourceTitle?.lowercase() ?: ""
+        val normalizedTitle = articleTitle?.lowercase() ?: ""
+
+        if (normalizedSource.contains("intimina")) {
+            return true
+        }
+
+        if (normalizedTitle.contains("intimina")) {
+            return true
+        }
+
+        return false
     }
 }

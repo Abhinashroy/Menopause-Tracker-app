@@ -176,6 +176,13 @@ class HomeFragment : Fragment() {
         selectedSymptoms.clear()
         binding.selectedSymptomsChipGroup.removeAllViews()
         binding.severitySlider.value = 3f
+
+        // Reset built-in common symptom chips so they no longer appear selected
+        binding.chipHotFlashes.isChecked = false
+        binding.chipNightSweats.isChecked = false
+        binding.chipMoodChanges.isChecked = false
+        binding.chipSleepIssues.isChecked = false
+        binding.chipFatigue.isChecked = false
     }
 
     private fun observeViewModel() {
@@ -214,6 +221,7 @@ class HomeFragment : Fragment() {
         viewModel.symptomSaved.observe(viewLifecycleOwner) { saved ->
             if (saved) {
                 Toast.makeText(context, R.string.symptoms_logged, Toast.LENGTH_SHORT).show()
+                viewModel.resetSymptomSaved()
             }
         }
     }

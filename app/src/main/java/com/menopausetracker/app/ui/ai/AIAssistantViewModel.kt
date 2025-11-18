@@ -153,8 +153,8 @@ class AIAssistantViewModel(application: Application) : AndroidViewModel(applicat
         val indexToRemove = _currentSuggestions.indexOfFirst { it.id == suggestionId }
         if (indexToRemove >= 0) {
             _currentSuggestions.removeAt(indexToRemove)
-            // Notify only about the specific index that was deleted
             _deletedSuggestionIndex.value = indexToRemove
+            _suggestions.value = _currentSuggestions.toList()
             saveSuggestions()
         }
     }
