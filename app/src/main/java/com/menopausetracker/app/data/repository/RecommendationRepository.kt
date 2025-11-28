@@ -12,7 +12,7 @@ class RecommendationRepository(application: Application) {
     private val symptomDao = database.symptomDao()
 
     // Gemini AI Service
-    private val geminiApiKey = "AIzaSyD7UzsETcBH411hr13elPTa5aH0KF5yrkI"
+    private val geminiApiKey = "AI"
     private val geminiAIService = GeminiAIService(geminiApiKey)
 
     suspend fun getRecommendations(symptoms: String): String = withContext(Dispatchers.IO) {
